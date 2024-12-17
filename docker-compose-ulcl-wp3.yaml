@@ -1,0 +1,397 @@
+version: "3.8"
+
+services:
+  free5gc-i-upf1:
+    container_name: wp3-i-upf
+    image: free5gc/upf:v3.4.4
+    command: bash -c "ip route add 10.100.100.0/24 via 10.100.200.20 && ./upf-iptables.sh && ./upf -c ./config/upfcfg.yaml"
+    volumes:
+      - ./config/ULCL/upfcfg-i-upf.yaml:/free5gc/config/upfcfg.yaml
+      - ./config/upf-iptables.sh:/free5gc/upf-iptables.sh
+    cap_add:
+      - NET_ADMIN
+    dns: 10.100.200.20
+    networks:
+      ran:
+        ipv4_address: 10.100.200.2
+        aliases:
+          - i-upf1.free5gc.org
+
+  free5gc-psa-upf:
+    container_name: wp3-psa-upf
+    image: free5gc/upf:v3.4.4
+    command: bash -c "ip route add 10.100.200.0/24 via 10.100.100.20 && ./upf-iptables.sh && ./upf -c ./config/upfcfg.yaml"
+    volumes:
+      - ./config/ULCL/upfcfg-psa-upf.yaml:/free5gc/config/upfcfg.yaml
+      - ./config/upf-iptables.sh:/free5gc/upf-iptables.sh
+    cap_add:
+      - NET_ADMIN
+    dns: 10.100.100.20
+    networks:
+      core:
+        ipv4_address: 10.100.100.3
+        aliases:
+          - psa-upf.free5gc.org
+
+  db:
+    container_name: wp3-mongodb
+    image: mongo:3.6.8
+    command: mongod --port 27017 --quiet
+    expose:
+      - "27017"
+    volumes:
+      - wp3-dbdata:/data/db
+    networks:
+      core:
+        ipv4_address: 10.100.100.2
+        aliases:
+          - db
+
+  free5gc-nrf:
+    container_name: wp3-nrf
+    image: free5gc/nrf:v3.4.4
+    command: ./nrf -c ./config/nrfcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/nrfcfg.yaml:/free5gc/config/nrfcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      DB_URI: mongodb://db/free5gc
+      GIN_MODE: release
+    networks:
+      core:
+        ipv4_address: 10.100.100.4
+        aliases:
+          - nrf.free5gc.org
+    depends_on:
+      - db
+
+  free5gc-amf:
+    container_name: wp3-amf
+    image: free5gc/amf:v3.4.4
+    command:  sh -c "ip route add 10.100.200.0/24 via 10.100.100.20 && ./amf -c ./config/amfcfg.yaml"
+    expose:
+      - "8000"
+    volumes:
+      - ./config/amfcfg.yaml:/free5gc/config/amfcfg.yaml
+      - ./cert:/free5gc/cert
+    dns: 10.100.100.20
+    cap_add:
+      - NET_ADMIN
+    environment:
+      GIN_MODE: release
+    networks:
+      core:
+        ipv4_address: 10.100.100.11
+        aliases:
+          - amf.free5gc.org
+    depends_on:
+      - free5gc-nrf
+
+  free5gc-ausf:
+    container_name: wp3-ausf
+    image: free5gc/ausf:v3.4.4
+    command: ./ausf -c ./config/ausfcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/ausfcfg.yaml:/free5gc/config/ausfcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      GIN_MODE: release
+    networks:
+      core:
+        ipv4_address: 10.100.100.5
+        aliases:
+          - ausf.free5gc.org
+    depends_on:
+      - free5gc-nrf
+
+  free5gc-nssf:
+    container_name: wp3-nssf
+    image: free5gc/nssf:v3.4.4
+    command: ./nssf -c ./config/nssfcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/nssfcfg.yaml:/free5gc/config/nssfcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      GIN_MODE: release
+    networks:
+      core:
+        ipv4_address: 10.100.100.8
+        aliases:
+          - nssf.free5gc.org
+    depends_on:
+      - free5gc-nrf
+
+  free5gc-pcf:
+    container_name: wp3-pcf
+    image: free5gc/pcf:v3.4.4
+    command: ./pcf -c ./config/pcfcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/pcfcfg.yaml:/free5gc/config/pcfcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      GIN_MODE: release
+    networks:
+      core:
+        ipv4_address: 10.100.100.9
+        aliases:
+          - pcf.free5gc.org
+    depends_on:
+      - free5gc-nrf
+
+  free5gc-smf:
+    container_name: wp3-smf
+    image: free5gc/smf:v3.4.4
+    command:  sh -c "ip route add 10.100.200.0/24 via 10.100.100.20 && ./smf -c ./config/smfcfg.yaml -u ./config/uerouting.yaml"
+    expose:
+      - "8000"
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./config/ULCL/smfcfg.yaml:/free5gc/config/smfcfg.yaml
+      - ./config/ULCL/uerouting.yaml:/free5gc/config/uerouting.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      GIN_MODE: release
+    dns: 10.100.100.20
+    networks:
+      core:
+        ipv4_address: 10.100.100.13
+        aliases:
+          - smf.free5gc.org
+    depends_on:
+      - free5gc-nrf
+      - free5gc-i-upf1
+      - free5gc-psa-upf
+
+  free5gc-udm:
+    container_name: wp3-udm
+    image: free5gc/udm:v3.4.4
+    command: ./udm -c ./config/udmcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/udmcfg.yaml:/free5gc/config/udmcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      GIN_MODE: release
+    networks:
+      core:
+        ipv4_address: 10.100.100.10
+        aliases:
+          - udm.free5gc.org
+    depends_on:
+      - db
+      - free5gc-nrf
+
+  free5gc-udr:
+    container_name: wp3-udr
+    image: free5gc/udr:v3.4.4
+    command: ./udr -c ./config/udrcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/udrcfg.yaml:/free5gc/config/udrcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      DB_URI: mongodb://db/free5gc
+      GIN_MODE: release
+    networks:
+      core:
+        ipv4_address: 10.100.100.6
+        aliases:
+          - udr.free5gc.org
+    depends_on:
+      - db
+      - free5gc-nrf
+
+  free5gc-chf:
+    container_name: wp3-chf
+    image: free5gc/chf:v3.4.4
+    command: ./chf -c ./config/chfcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/chfcfg.yaml:/free5gc/config/chfcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      DB_URI: mongodb://db/free5gc
+      GIN_MODE: release
+    networks:
+      core:
+        ipv4_address: 10.100.100.14
+        aliases:
+          - chf.free5gc.org
+    depends_on:
+      - db
+      - free5gc-nrf
+      - free5gc-webui
+
+  free5gc-nef:
+    container_name: wp3-nef
+    image: free5gc/nef:latest
+    command: ./nef -c ./config/nefcfg.yaml
+    expose:
+      - "8000"
+    volumes:
+      - ./config/nefcfg.yaml:/free5gc/config/nefcfg.yaml
+      - ./cert:/free5gc/cert
+    environment:
+      GIN_MODE: release
+    networks:
+      core:
+        ipv4_address: 10.100.100.12
+        aliases:
+          - nef.free5gc.org
+    depends_on:
+      - db
+      - free5gc-nrf
+
+  free5gc-webui:
+    container_name: wp3-webui
+    image: free5gc/webui:v3.4.4
+    command: ./webui -c ./config/webuicfg.yaml
+    expose:
+      - "2122"
+      - "2121"
+    volumes:
+      - ./config/webuicfg.yaml:/free5gc/config/webuicfg.yaml
+    environment:
+      - GIN_MODE=release
+    networks:
+      core:
+        ipv4_address: 10.100.100.7
+        aliases:
+          - webui
+    ports:
+      - "5000:5000"
+      - "2122:2122"
+      - "2121:2121"
+    depends_on:
+      - db
+      - free5gc-nrf
+
+  # ueransim:
+  #   container_name: wp3-ueransim
+  #   image: free5gc/ueransim:latest
+  #   stdin_open: true # docker run -i
+  #   tty: true        # docker run -t
+  #   command: bash -c "ip route add 10.100.100.0/24 via 10.100.200.20 && ./nr-gnb -c ./config/gnbcfg.yaml"
+  #   volumes:
+  #     - ./config/gnbcfg.yaml:/ueransim/config/gnbcfg.yaml
+  #     - ./config/uecfg-ulcl.yaml:/ueransim/config/uecfg.yaml
+  #   cap_add:
+  #     - NET_ADMIN
+  #   devices:
+  #     - "/dev/net/tun"
+  #   dns: 10.100.200.20
+  #   networks:
+  #     ran:
+  #       ipv4_address: 10.100.200.10
+  #       aliases:
+  #         - gnb.free5gc.org
+  #   depends_on:
+  #     - free5gc-amf
+  #     - free5gc-i-upf1
+  #     - free5gc-psa-upf
+
+  packetrusher:
+    container_name: wp3-packetrusher
+    image: "ghcr.io/borjis131/packetrusher:main"
+    privileged: true
+    # command: "--config /PacketRusher/config/packetrusher.yaml ue"
+    entrypoint: /bin/bash -c "ip route add 10.100.100.0/24 via 10.100.200.20 && /PacketRusher/packetrusher --config /PacketRusher/config/packetrusher.yaml ue "
+    dns: 10.100.200.20
+    volumes:
+      - "./config/packetrusher.yaml:/PacketRusher/config/packetrusher.yaml"
+    cap_add:
+      - ALL
+    networks:
+      ran:
+        ipv4_address: 10.100.200.10
+        aliases:
+          - gnb.free5gc.org
+    depends_on:
+      - free5gc-amf
+      - free5gc-i-upf1
+      - free5gc-psa-upf
+    healthcheck:
+      test: /bin/bash -c "ip addr | grep uetun1"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  
+  coredns:
+    container_name: coredns
+    image: coredns/coredns:latest
+    restart: on-failure # other option: always - if you want persistent through host reboots
+    networks:
+      ran:
+        ipv4_address: 10.100.200.20
+      core:
+        ipv4_address: 10.100.100.20
+    
+    command: -conf /etc/coredns/Corefile
+    volumes:
+        - './config/coredns/Corefile:/etc/coredns/Corefile' 
+
+  #ue:
+  #  container_name: ue
+  #  image: free5gc/ueransim:latest
+  #  command: ./nr-ue -c ./config/uecfg.yaml
+  #  volumes:
+  #    - ./config/uecfg.yaml:/ueransim/config/uecfg.yaml
+  #  cap_add:
+  #    - NET_ADMIN
+  #  devices:
+  #    - "/dev/net/tun"
+  #  networks:
+  #    privnet:
+  #      aliases:
+  #        - ue.free5gc.org
+  #  depends_on:
+  #    - ueransim
+
+  #n3iwue:
+  #  container_name: n3iwue
+  #  image: free5gc/n3iwue:latest
+  #  command: bash -c "ip route del default && ip route add default via 10.100.200.1 dev eth0 metric 203 && sleep infinity"
+  #  volumes:
+  #    - ./config/n3uecfg.yaml:/n3iwue/config/n3ue.yaml
+  #  cap_add:
+  #    - NET_ADMIN
+  #  devices:
+  #    - "/dev/net/tun"
+  #  networks:
+  #    privnet:
+  #      ipv4_address: 10.100.200.203
+  #      aliases:
+  #        - n3ue.free5gc.org
+  #  depends_on:
+  #    - free5gc-n3iwf
+
+networks:
+  ran:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.100.200.0/24
+    driver_opts:
+      com.docker.network.bridge.name: br-core
+  core:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.100.100.0/24
+    driver_opts:
+      com.docker.network.bridge.name: br-front
+
+volumes:
+  wp3-dbdata:

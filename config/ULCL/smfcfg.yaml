@@ -44,7 +44,7 @@ configuration:
         nodeID: gnb.free5gc.org # the Node ID of this gNB
       I-UPF: # the name of the node
         type: UPF # the type of the node (AN or UPF)
-        nodeID: i-upf.free5gc.org # the Node ID of this UPF
+        nodeID: i-upf1.free5gc.org # the Node ID of this UPF
         sNssaiUpfInfos: # S-NSSAI information list for this UPF
           - sNssai: # S-NSSAI (Single Network Slice Selection Assistance Information)
               sst: 1 # Slice/Service Type (uinteger, range: 0~255)
@@ -56,12 +56,12 @@ configuration:
         interfaces: # Interface list for this UPF
           - interfaceType: N3 # the type of the interface (N3 or N9)
             endpoints: # the IP address of this N3/N9 interface on this UPF
-              - i-upf.free5gc.org
+              - i-upf1.free5gc.org
             networkInstances: # Data Network Name (DNN)
               - internet
           - interfaceType: N9 # the type of the interface (N3 or N9)
             endpoints: # the IP address of this N3/N9 interface on this UPF
-              - i-upf.free5gc.org
+              - i-upf1.free5gc.org
             networkInstances: # Data Network Name (DNN)
               - internet
       PSA-UPF: # the name of the node
