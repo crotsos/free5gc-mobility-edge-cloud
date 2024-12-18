@@ -41,8 +41,8 @@ configuration:
     upNodes: # information of userplane node (AN or UPF)
       gNB1: # the name of the node
         type: AN # the type of the node (AN or UPF)
-        nodeID: gnb.free5gc.org # the Node ID of this gNB
-      I-UPF: # the name of the node
+        nodeID: gnb1.free5gc.org # the Node ID of this gNB
+      I-UPF1: # the name of the node
         type: UPF # the type of the node (AN or UPF)
         nodeID: i-upf1.free5gc.org # the Node ID of this UPF
         sNssaiUpfInfos: # S-NSSAI information list for this UPF
@@ -64,6 +64,32 @@ configuration:
               - i-upf1.free5gc.org
             networkInstances: # Data Network Name (DNN)
               - internet
+      gNB2: # the name of the node
+        type: AN # the type of the node (AN or UPF)
+        nodeID: gnb2.free5gc.org # the Node ID of this gNB
+      I-UPF2: # the name of the node
+        type: UPF # the type of the node (AN or UPF)
+        nodeID: i-upf2.free5gc.org # the Node ID of this UPF
+        sNssaiUpfInfos: # S-NSSAI information list for this UPF
+          - sNssai: # S-NSSAI (Single Network Slice Selection Assistance Information)
+              sst: 1 # Slice/Service Type (uinteger, range: 0~255)
+              sd: 010203 # Slice Differentiator (3 bytes hex string, range: 000000~FFFFFF)
+            dnnUpfInfoList: # DNN information list for this S-NSSAI
+              - dnn: internet
+                dnaiList:
+                  - mec
+        interfaces: # Interface list for this UPF
+          - interfaceType: N3 # the type of the interface (N3 or N9)
+            endpoints: # the IP address of this N3/N9 interface on this UPF
+              - i-upf2.free5gc.org
+            networkInstances: # Data Network Name (DNN)
+              - internet
+          - interfaceType: N9 # the type of the interface (N3 or N9)
+            endpoints: # the IP address of this N3/N9 interface on this UPF
+              - i-upf2.free5gc.org
+            networkInstances: # Data Network Name (DNN)
+              - internet
+                
       PSA-UPF: # the name of the node
         type: UPF # the type of the node (AN or UPF)
         nodeID: psa-upf.free5gc.org # the Node ID of this UPF
@@ -83,10 +109,14 @@ configuration:
               - internet
     links: # the topology graph of userplane, A and B represent the two nodes of each link
       - A: gNB1
-        B: I-UPF
-      - A: I-UPF
+        B: I-UPF1
+      - A: I-UPF1
         B: PSA-UPF
-  # retransmission timer for pdu session modification command
+      - A: gNB2
+        B: I-UPF2
+      - A: I-UPF2
+        B: PSA-UPF
+   # retransmission timer for pdu session modification command
   t3591:
     enable: true # true or false
     expireTime: 16s # default is 6 seconds

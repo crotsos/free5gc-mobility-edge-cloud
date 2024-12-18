@@ -4,6 +4,10 @@
     reload 10s
     whoami
     forward . /etc/resolv.conf
+    hosts custom.hosts gnb2.free5gc.org {
+            10.100.200.31 gnb2.free5gc.org
+            fallthrough
+          }
     # If you wish to use a standard ZONE File format, uncomment the following line and customize the specified file
     # file /etc/coredns/db.free5gc.org
     
